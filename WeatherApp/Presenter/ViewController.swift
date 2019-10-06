@@ -45,10 +45,9 @@ class ViewController: UITableViewController {
   // MARK: - Navigation
   override func prepare(for segue: UIStoryboardSegue, sender: Any?) {
     
-    if segue.identifier == "details" {
+    if let destinationVC = segue.destination as? CollectionViewController {
       if let indexPath = tableView.indexPathForSelectedRow {
         let city = city_list[indexPath.row]
-        let destinationVC = segue.destination as! CollectionViewController
         destinationVC.city.name = city
       }
     }
