@@ -13,8 +13,11 @@ class ViewController: UITableViewController {
   
   private let reuseIdentifier = "Cell"
   
+  var searchController: UISearchController!
+  var searchResult: [String] = []
+  
   let data = ManagerData()
-  var isDeletin = false
+  var isDeleting = false
   var currentAddAction: UIAlertAction!
   
   var city_list: [String] = [] {
@@ -28,12 +31,14 @@ class ViewController: UITableViewController {
   }
   
   @IBAction func deleteCity(_ sender: Any) {
-    self.isDeletin = !self.isDeletin
-    self.tableView.setEditing(self.isDeletin, animated: true)
+    self.isDeleting = !self.isDeleting
+    self.tableView.setEditing(self.isDeleting, animated: true)
   }
   
   override func viewDidLoad() {
     super.viewDidLoad()
+    
+    searchBarSetup()
     
     if let _ = loadFlag {
       city_list = data.loadCitiesFromDB()
@@ -47,11 +52,12 @@ class ViewController: UITableViewController {
     
     if let destinationVC = segue.destination as? CollectionViewController {
       if let indexPath = tableView.indexPathForSelectedRow {
-        let city = city_list[indexPath.row]
+        let city = searchController.isActive ? searchResult[indexPath.row] : city_list[indexPath.row]
         destinationVC.city.name = city
       }
     }
   }
+  
 }
 
 // MARK: - AlertControllers
@@ -98,17 +104,50 @@ extension ViewController {
   }
 }
 
+// MARK: - SearcController
+extension ViewController: UISearchControllerDelegate, UISearchResultsUpdating {
+  
+  func searchBarSetup() {
+    
+    searchController = UISearchController(searchResultsController: nil)
+    searchController.searchResultsUpdater = self
+    searchController.obscuresBackgroundDuringPresentation = false
+    searchController.searchBar.enablesReturnKeyAutomatically = true
+    
+    navigationItem.searchController = searchController
+    navigationController?.navigationBar.prefersLargeTitles = true
+    navigationController?.hidesBarsOnSwipe = true
+    
+  }
+  
+  private func filterContent(for searchText: String) {
+    
+    searchResult = city_list.filter({ (city) -> Bool in
+      return city.localizedCaseInsensitiveContains(searchText)
+    })
+  }
+  
+  func updateSearchResults(for searchController: UISearchController) {
+    if let searchText = searchController.searchBar.text {
+      filterContent(for: searchText)
+      tableView.reloadData()
+    }
+  }
+  
+}
+
 // MARK: - TableView
 extension ViewController {
   
   override func tableView(_ tableView: UITableView, numberOfRowsInSection section: Int) -> Int {
-    return city_list.count
+    
+    if searchController.isActive { return searchResult.count } else { return city_list.count }
   }
   
   override func tableView(_ tableView: UITableView, cellForRowAt indexPath: IndexPath) -> UITableViewCell {
     
     let cell = tableView.dequeueReusableCell(withIdentifier: reuseIdentifier, for: indexPath)
-    cell.textLabel?.text = city_list[indexPath.row]
+    cell.textLabel?.text = searchController.isActive ? searchResult[indexPath.row] : city_list[indexPath.row]
     
     return cell
   }
@@ -117,9 +156,12 @@ extension ViewController {
     
     let deleteAction = UITableViewRowAction(style: .default, title: "Delete") { deleteAction, indexPath -> Void in
       
-      if let cityToBeDelete = self.data.loadFromDB(self.city_list[indexPath.row]) {
+      let city = self.searchController.isActive ? self.searchResult[indexPath.row] : self.city_list[indexPath.row]
+      
+      if let cityToBeDelete = self.data.loadFromDB(city) {
         
-        self.city_list.remove(at: indexPath.row)
+        let tempArray = self.city_list.filter { $0 != city }
+        self.city_list = tempArray
         
         do {
           let realm = try Realm()

@@ -54,13 +54,9 @@ class ManagerData {
         print(error.localizedDescription)
         loadFlag = false as AnyObject?
       }
-      if isWaiting {
-        semaphore.signal()
-      }
+      if isWaiting { semaphore.signal() }
     }
-    if isWaiting {
-      semaphore.wait()
-    }
+    if isWaiting { semaphore.wait() }
   }
   
   func loadFromDB(_ city: String) -> Results<WeatherData>? {
